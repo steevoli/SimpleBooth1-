@@ -37,40 +37,25 @@ ensure_directories()
 
 
 def find_usb_mounts():
-    """Retourne la liste des points de montage des clés USB."""
+    """Retourne la liste des points de montage des supports USB."""
     mounts = []
     try:
-        with open('/proc/mounts', 'r', encoding='utf-8') as f:
-            for line in f:
-                parts = line.split()
-                if parts and parts[0].startswith('/dev/sd'):
-                    # Les espaces sont encodés en \040 dans /proc/mounts
-                    mount_point = parts[1].replace('\\040', ' ')
+        # Utiliser lsblk pour lister les périphériques de stockage USB montés
+        result = subprocess.run(
+            ['lsblk', '-rno', 'NAME,TRAN,MOUNTPOINT'],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        for line in result.stdout.splitlines():
+            parts = line.split(None, 2)
+            if len(parts) == 3:
+                name, tran, mount_point = parts
+                if tran == 'usb' and mount_point and mount_point not in mounts:
                     mounts.append(mount_point)
     except Exception as e:  # pragma: no cover - dépend du système
         logger.info(f"[USB] Erreur de détection: {e}")
     return mounts
-
-
-def manage_usb_power(enable: bool):
-    """Active/désactive l'alimentation des ports USB si possible."""
-    if shutil.which('uhubctl') is None:
-        logger.info("[USB] uhubctl absent, gestion d'énergie ignorée")
-        return
-    action = 'on' if enable else 'off'
-    try:
-        subprocess.run(
-            ['uhubctl', '-a', action],
-            check=False,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-    except Exception as e:  # pragma: no cover - dépend du système
-        logger.info(f"[USB] Gestion énergie indisponible: {e}")
-
-
-if not find_usb_mounts():
-    manage_usb_power(False)
 
 def check_printer_status():
     """Vérifier l'état de l'imprimante thermique"""
@@ -238,7 +223,6 @@ def review_photo():
 def usb_paths():
     """Retourne les chemins de montage des clés USB détectées"""
     paths = find_usb_mounts()
-    manage_usb_power(bool(paths))
     return jsonify({'paths': paths})
 
 
@@ -271,26 +255,18 @@ def save_photo():
 
         config['usb_mount_path'] = usb_path
 
-        manage_usb_power(True)
         try:
             shutil.copy(photo_path, os.path.join(usb_path, os.path.basename(photo_path)))
             # Utiliser os.sync pour s'assurer que les données sont écrites
             os.sync()
-            subprocess.run(
-                ['umount', usb_path],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                timeout=15,
-            )
         except Exception as e:
-            manage_usb_power(False)
             return jsonify({'success': False, 'error': f'Erreur sauvegarde USB: {str(e)}'})
-        manage_usb_power(False)
 
         success, error_msg = send_email(photo_path)
         if not success:
             return jsonify({'success': False, 'error': f'Erreur envoi email: {error_msg}'})
 
+        current_photo = None
         return jsonify({'success': True, 'message': 'Photo sauvegardée et envoyée avec succès'})
 
     except Exception as e:
