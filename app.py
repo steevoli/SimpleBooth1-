@@ -36,6 +36,38 @@ logger = logging.getLogger(__name__)
 # Initialiser les dossiers nécessaires
 ensure_directories()
 
+
+def find_usb_mounts():
+    """Retourne la liste des points de montage des clés USB."""
+    mounts = []
+    try:
+        with open('/proc/mounts', 'r', encoding='utf-8') as f:
+            for line in f:
+                parts = line.split()
+                if parts and parts[0].startswith('/dev/sd'):
+                    mounts.append(parts[1])
+    except Exception as e:  # pragma: no cover - dépend du système
+        logger.info(f"[USB] Erreur de détection: {e}")
+    return mounts
+
+
+def manage_usb_power(enable: bool):
+    """Active/désactive l'alimentation des ports USB si possible."""
+    action = 'on' if enable else 'off'
+    try:
+        subprocess.run(
+            ['uhubctl', '-a', action],
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception as e:  # pragma: no cover - dépend du système
+        logger.info(f"[USB] Gestion énergie indisponible: {e}")
+
+
+if not find_usb_mounts():
+    manage_usb_power(False)
+
 def check_printer_status():
     """Vérifier l'état de l'imprimante thermique"""
     try:
@@ -197,6 +229,15 @@ def review_photo():
         return redirect(url_for('index'))
     return render_template('review.html', photo=current_photo, config=config)
 
+
+@app.route('/usb_paths')
+def usb_paths():
+    """Retourne les chemins de montage des clés USB détectées"""
+    paths = find_usb_mounts()
+    manage_usb_power(bool(paths))
+    return jsonify({'paths': paths})
+
+
 @app.route('/save_photo', methods=['POST'])
 def save_photo():
     """Sauvegarder la photo actuelle sur USB et l'envoyer par email"""
@@ -215,10 +256,15 @@ def save_photo():
         else:
             return jsonify({'success': False, 'error': 'Photo introuvable'})
 
-        # Copier vers la clé USB
-        usb_path = config.get('usb_mount_path', '/media/usb')
-        if not os.path.exists(usb_path):
+        # Déterminer le chemin USB
+        data = request.get_json() or {}
+        usb_path = data.get('usb_path')
+        if not usb_path or not os.path.exists(usb_path):
             return jsonify({'success': False, 'error': 'Clé USB non détectée'})
+
+        # Activer l'alimentation si nécessaire
+        manage_usb_power(True)
+
         try:
             shutil.copy(photo_path, os.path.join(usb_path, os.path.basename(photo_path)))
         except Exception as e:
@@ -228,6 +274,13 @@ def save_photo():
         success, error_msg = send_email(photo_path, config)
         if not success:
             return jsonify({'success': False, 'error': f'Erreur envoi email: {error_msg}'})
+
+        try:  # Réduire la consommation en démontant la clé
+            subprocess.run(['sync'], timeout=5)
+            subprocess.run(['umount', usb_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+            manage_usb_power(False)
+        except Exception as e:
+            logger.info(f"[USB] Impossible de démonter: {e}")
 
         return jsonify({'success': True, 'message': 'Photo sauvegardée et envoyée avec succès!'})
 
