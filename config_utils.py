@@ -27,7 +27,16 @@ DEFAULT_CONFIG = {
     'printer_enabled': True,
     'printer_port': '/dev/ttyAMA0',
     'printer_baudrate': 9600,
-    'print_resolution': 384
+    'print_resolution': 384,
+    # Configuration sauvegarde/Email
+    'usb_mount_path': '/media/usb',
+    'email_recipient': '',
+    'smtp_server': 'localhost',
+    'smtp_port': 25,
+    'smtp_username': '',
+    'smtp_password': '',
+    'smtp_use_tls': False,
+    'email_sender': 'photobooth@example.com'
 }
 
 logger = logging.getLogger(__name__)
