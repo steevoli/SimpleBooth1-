@@ -45,7 +45,9 @@ def find_usb_mounts():
             for line in f:
                 parts = line.split()
                 if parts and parts[0].startswith('/dev/sd'):
-                    mounts.append(parts[1])
+                    # Les espaces sont encodés en \040 dans /proc/mounts
+                    mount_point = parts[1].replace('\\040', ' ')
+                    mounts.append(mount_point)
     except Exception as e:  # pragma: no cover - dépend du système
         logger.info(f"[USB] Erreur de détection: {e}")
     return mounts
@@ -260,10 +262,15 @@ def save_photo():
         mode = data.get('mode', 'both')
         usb_path = data.get('usb_path')
 
-        # Sauvegarde sur clé USB si demandé
+        # Détection automatique de la clé USB
         if mode in ('usb', 'both'):
             if not usb_path or not os.path.exists(usb_path):
-                return jsonify({'success': False, 'error': 'Clé USB non détectée'})
+                mounts = find_usb_mounts()
+                usb_path = mounts[0] if mounts else None
+            if not usb_path or not os.path.exists(usb_path):
+                return jsonify({'success': False, 'error': 'Aucune clé USB détectée. Vérifiez la connexion.'})
+            config['usb_mount_path'] = usb_path
+
             manage_usb_power(True)
             try:
                 shutil.copy(photo_path, os.path.join(usb_path, os.path.basename(photo_path)))

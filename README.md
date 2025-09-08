@@ -146,9 +146,10 @@ Les paramètres SMTP sont stockés dans `config.json` et peuvent être configur�
 "smtp_server": "smtp.example.com",
 "smtp_port": 587,
 "smtp_username": "utilisateur",
-"smtp_password": "motdepasse",
-"smtp_use_tls": true
+"smtp_password": "motdepasse"
 ```
+
+Le chiffrement TLS est détecté automatiquement lorsque le serveur le supporte, aucune configuration n'est nécessaire.
 
 Assurez-vous que le serveur SMTP est accessible et que les identifiants sont valides.
 
