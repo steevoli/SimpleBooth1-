@@ -35,7 +35,6 @@ DEFAULT_CONFIG = {
     'smtp_port': 25,
     'smtp_username': '',
     'smtp_password': '',
-    'smtp_use_tls': False,
     'email_sender': 'photobooth@example.com'
 }
 
