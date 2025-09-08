@@ -240,7 +240,7 @@ def usb_paths():
 
 @app.route('/save_photo', methods=['POST'])
 def save_photo():
-    """Sauvegarder la photo actuelle sur USB et l'envoyer par email"""
+    """Sauvegarder la photo actuelle selon le mode choisi."""
     global current_photo
 
     if not current_photo:
@@ -256,33 +256,31 @@ def save_photo():
         else:
             return jsonify({'success': False, 'error': 'Photo introuvable'})
 
-        # Déterminer le chemin USB
         data = request.get_json() or {}
+        mode = data.get('mode', 'both')
         usb_path = data.get('usb_path')
-        if not usb_path or not os.path.exists(usb_path):
-            return jsonify({'success': False, 'error': 'Clé USB non détectée'})
 
-        # Activer l'alimentation si nécessaire
-        manage_usb_power(True)
-
-        try:
-            shutil.copy(photo_path, os.path.join(usb_path, os.path.basename(photo_path)))
-        except Exception as e:
-            return jsonify({'success': False, 'error': f'Erreur sauvegarde USB: {str(e)}'})
-
-        # Envoyer par email
-        success, error_msg = send_email(photo_path, config)
-        if not success:
-            return jsonify({'success': False, 'error': f'Erreur envoi email: {error_msg}'})
-
-        try:  # Réduire la consommation en démontant la clé
-            subprocess.run(['sync'], timeout=5)
-            subprocess.run(['umount', usb_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+        # Sauvegarde sur clé USB si demandé
+        if mode in ('usb', 'both'):
+            if not usb_path or not os.path.exists(usb_path):
+                return jsonify({'success': False, 'error': 'Clé USB non détectée'})
+            manage_usb_power(True)
+            try:
+                shutil.copy(photo_path, os.path.join(usb_path, os.path.basename(photo_path)))
+                subprocess.run(['sync'], timeout=5)
+                subprocess.run(['umount', usb_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+            except Exception as e:
+                manage_usb_power(False)
+                return jsonify({'success': False, 'error': f'Erreur sauvegarde USB: {str(e)}'})
             manage_usb_power(False)
-        except Exception as e:
-            logger.info(f"[USB] Impossible de démonter: {e}")
 
-        return jsonify({'success': True, 'message': 'Photo sauvegardée et envoyée avec succès!'})
+        # Envoi email si demandé
+        if mode in ('email', 'both'):
+            success, error_msg = send_email(photo_path, config)
+            if not success:
+                return jsonify({'success': False, 'error': f'Erreur envoi email: {error_msg}'})
+
+        return jsonify({'success': True, 'message': 'Photo sauvegardée avec succès'})
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
