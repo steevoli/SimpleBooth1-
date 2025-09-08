@@ -37,8 +37,9 @@ def send_email(photo_path, config):
     if smtp_password and not smtp_username:
         return False, "Identifiant manquant"
 
+    subject = config.get('email_subject', 'Photo du photobooth')
     msg = EmailMessage()
-    msg['Subject'] = 'Photo du photobooth'
+    msg['Subject'] = subject
     msg['From'] = sender
     msg['To'] = recipient
     msg.set_content('Veuillez trouver la photo en pièce jointe.')
