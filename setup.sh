@@ -267,8 +267,9 @@ configure_email() {
   step "Configuration de l'envoi d'emails"
   read -rp "Serveur SMTP (ex: smtp.gmail.com): " smtp_server
   read -rp "Port SMTP (ex: 587): " smtp_port
-  read -rp "Email expéditeur: " email_sender
-  read -rp "Destinataire des emails: " email_recipient
+  read -rp "Expéditeur (From): " email_sender
+  read -rp "Destinataire (To): " email_recipient
+  read -rp "Sujet de l'email: " email_subject
   read -rp "Nom d'utilisateur SMTP: " smtp_username
   read -srp "Mot de passe SMTP: " smtp_password; echo
 
@@ -285,6 +286,7 @@ if os.path.exists(cfg_path):
 config.update({
     "email_sender": "${email_sender}",
     "email_recipient": "${email_recipient}",
+    "email_subject": "${email_subject}",
     "smtp_server": "${smtp_server}",
     "smtp_port": int("${smtp_port}" or 25),
     "smtp_username": "${smtp_username}",

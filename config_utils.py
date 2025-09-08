@@ -35,7 +35,8 @@ DEFAULT_CONFIG = {
     'smtp_port': 25,
     'smtp_username': '',
     'smtp_password': '',
-    'email_sender': 'photobooth@example.com'
+    'email_sender': 'photobooth@example.com',
+    'email_subject': 'Photo du photobooth'
 }
 
 logger = logging.getLogger(__name__)
