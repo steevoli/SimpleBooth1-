@@ -76,7 +76,7 @@
                 </button>
             </div>
             <div class="col">
-                <button class="btn btn-success w-100 btn-review" onclick="savePhoto()">
+                <button id="saveBtn" class="btn btn-success w-100 btn-review" onclick="savePhoto()">
                     <i class="fas fa-save"></i>
                     <span>Sauvegarder</span>
                 </button>
@@ -95,7 +95,7 @@
             </div>
             {% else %}
             <div class="col-4">
-                <button class="btn btn-success w-100 btn-review" onclick="savePhoto()">
+                <button id="saveBtn" class="btn btn-success w-100 btn-review" onclick="savePhoto()">
                     <i class="fas fa-save"></i>
                     <span>Sauvegarder</span>
                 </button>
@@ -118,7 +118,7 @@
 </div>
 
 <!-- Overlay de sauvegarde en plein écran -->
-<div id="saveOverlay" class="d-none" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+<div id="saveOverlay" class="d-none" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center; opacity:0; transition: opacity 0.3s ease;">
     <div class="text-center text-white">
         <div class="mb-4">
             <i class="fas fa-spinner fa-spin" style="font-size: 4rem;"></i>
@@ -189,73 +189,106 @@
         </div>
     </div>
 </div>
+<!-- Modale choix sauvegarde -->
+<div class="modal fade" id="saveOptionsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Sauvegarder la photo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body d-grid gap-2">
+                <button class="btn btn-primary" onclick="chooseSave('email')"><i class="fas fa-envelope me-2"></i>Email</button>
+                <button class="btn btn-primary" onclick="chooseSave('usb')"><i class="fas fa-usb me-2"></i>Clé USB</button>
+                <button class="btn btn-primary" onclick="chooseSave('both')"><i class="fas fa-share me-2"></i>Les deux</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-async function savePhoto() {
-    const saveBtn = event.target;
+function savePhoto() {
+    const modal = new bootstrap.Modal(document.getElementById('saveOptionsModal'));
+    modal.show();
+}
+
+function chooseSave(mode) {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('saveOptionsModal'));
+    modal.hide();
+    saveWithMode(mode);
+}
+
+async function saveWithMode(mode) {
+    const saveBtn = document.getElementById('saveBtn');
     const originalContent = saveBtn.innerHTML;
     const overlay = document.getElementById('saveOverlay');
 
-    // Désactiver le bouton
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Sauvegarde...';
 
     try {
-        const resp = await fetch('/usb_paths');
-        const data = await resp.json();
-        const paths = data.paths || [];
+        let path = null;
+        if (mode !== 'email') {
+            const resp = await fetch('/usb_paths');
+            const data = await resp.json();
+            const paths = data.paths || [];
 
-        if (paths.length === 0) {
-            overlay.classList.remove('d-none');
-            overlay.style.display = 'flex';
-            overlay.innerHTML =
-                '<div class="text-center text-white">' +
-                '<div class="mb-4">' +
-                '<i class="fas fa-exclamation-triangle" style="font-size: 4rem; color: #dc3545;"></i>' +
-                '</div>' +
-                '<h2 class="mb-3">Aucune clé USB détectée</h2>' +
-                '<button class="btn btn-light" onclick="closeOverlay()">Fermer</button>' +
-                '</div>';
-            saveBtn.disabled = false;
-            saveBtn.innerHTML = originalContent;
-            return;
+            if (paths.length === 0) {
+                overlay.classList.remove('d-none');
+                overlay.style.display = 'flex';
+                overlay.style.opacity = '1';
+                overlay.innerHTML =
+                    '<div class="text-center text-white">' +
+                    '<div class="mb-4">' +
+                    '<i class="fas fa-exclamation-triangle" style="font-size: 4rem; color: #dc3545;"></i>' +
+                    '</div>' +
+                    '<h2 class="mb-3">Aucune clé USB détectée</h2>' +
+                    '<button class="btn btn-light" onclick="closeOverlay()">Fermer</button>' +
+                    '</div>';
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalContent;
+                return;
+            }
+
+            if (paths.length > 1) {
+                const list = document.getElementById('usbOptions');
+                list.innerHTML = '';
+                paths.forEach(p => {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn btn-primary w-100 mb-2';
+                    btn.textContent = p;
+                    btn.onclick = () => {
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('usbSelectModal'));
+                        modal.hide();
+                        doSave(p, mode, saveBtn, originalContent, overlay);
+                    };
+                    list.appendChild(btn);
+                });
+                const modal = new bootstrap.Modal(document.getElementById('usbSelectModal'));
+                modal.show();
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = originalContent;
+                return;
+            }
+
+            path = paths[0];
         }
 
-        if (paths.length > 1) {
-            const list = document.getElementById('usbOptions');
-            list.innerHTML = '';
-            paths.forEach(p => {
-                const btn = document.createElement('button');
-                btn.className = 'btn btn-primary w-100 mb-2';
-                btn.textContent = p;
-                btn.onclick = () => {
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('usbSelectModal'));
-                    modal.hide();
-                    doSave(p, saveBtn, originalContent, overlay);
-                };
-                list.appendChild(btn);
-            });
-            const modal = new bootstrap.Modal(document.getElementById('usbSelectModal'));
-            modal.show();
-            saveBtn.disabled = false;
-            saveBtn.innerHTML = originalContent;
-            return;
-        }
-
-        await doSave(paths[0], saveBtn, originalContent, overlay);
+        await doSave(path, mode, saveBtn, originalContent, overlay);
 
     } catch (error) {
-        console.error('Erreur lors de la détection USB:', error);
-        overlay.classList.remove('d-none');
-        overlay.style.display = 'flex';
+        console.error('Erreur lors de la sauvegarde:', error);
+                overlay.classList.remove('d-none');
+                overlay.style.display = 'flex';
+                overlay.style.opacity = '1';
         overlay.innerHTML =
             '<div class="text-center text-white">' +
             '<div class="mb-4">' +
             '<i class="fas fa-exclamation-triangle" style="font-size: 4rem; color: #dc3545;"></i>' +
             '</div>' +
-            '<h2 class="mb-3">Erreur USB</h2>' +
+            '<h2 class="mb-3">Erreur de sauvegarde</h2>' +
             '<p class="mb-3">' + error.message + '</p>' +
             '<button class="btn btn-light" onclick="closeOverlay()">Fermer</button>' +
             '</div>';
@@ -264,9 +297,10 @@ async function savePhoto() {
     }
 }
 
-async function doSave(path, saveBtn, originalContent, overlay) {
+async function doSave(path, mode, saveBtn, originalContent, overlay) {
     overlay.classList.remove('d-none');
     overlay.style.display = 'flex';
+    overlay.style.opacity = '1';
 
     try {
         const response = await fetch('/save_photo', {
@@ -274,7 +308,7 @@ async function doSave(path, saveBtn, originalContent, overlay) {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ usb_path: path })
+            body: JSON.stringify({ usb_path: path, mode: mode })
         });
 
         const result = await response.json();
@@ -317,8 +351,11 @@ async function doSave(path, saveBtn, originalContent, overlay) {
 
 function closeOverlay() {
     const overlay = document.getElementById('saveOverlay');
-    overlay.classList.add('d-none');
-    overlay.style.display = 'none';
+    overlay.style.opacity = '0';
+    setTimeout(() => {
+        overlay.classList.add('d-none');
+        overlay.style.display = 'none';
+    }, 300);
 }
 
 function deletePhoto() {

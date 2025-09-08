@@ -268,9 +268,9 @@ configure_email() {
   read -rp "Nom d'utilisateur SMTP: " smtp_username
   read -srp "Mot de passe SMTP: " smtp_password; echo
   if confirm "Utiliser TLS ? (o/N)" "N"; then
-    smtp_use_tls=true
+    smtp_use_tls="True"
   else
-    smtp_use_tls=false
+    smtp_use_tls="False"
   fi
 
   python3 - <<PY
