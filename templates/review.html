@@ -189,38 +189,11 @@
         </div>
     </div>
 </div>
-<!-- Modale choix sauvegarde -->
-<div class="modal fade" id="saveOptionsModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Sauvegarder la photo</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body d-grid gap-2">
-                <button class="btn btn-primary" onclick="chooseSave('email')"><i class="fas fa-envelope me-2"></i>Email</button>
-                <button class="btn btn-primary" onclick="chooseSave('usb')"><i class="fas fa-usb me-2"></i>Clé USB</button>
-                <button class="btn btn-primary" onclick="chooseSave('both')"><i class="fas fa-share me-2"></i>Les deux</button>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-function savePhoto() {
-    const modal = new bootstrap.Modal(document.getElementById('saveOptionsModal'));
-    modal.show();
-}
-
-function chooseSave(mode) {
-    const modal = bootstrap.Modal.getInstance(document.getElementById('saveOptionsModal'));
-    modal.hide();
-    saveWithMode(mode);
-}
-
-async function saveWithMode(mode) {
+async function savePhoto() {
     const saveBtn = document.getElementById('saveBtn');
     const originalContent = saveBtn.innerHTML;
     const overlay = document.getElementById('saveOverlay');
@@ -229,60 +202,55 @@ async function saveWithMode(mode) {
     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Sauvegarde...';
 
     try {
-        let path = null;
-        if (mode !== 'email') {
-            const resp = await fetch('/usb_paths');
-            const data = await resp.json();
-            const paths = data.paths || [];
+        const resp = await fetch('/usb_paths');
+        const data = await resp.json();
+        const paths = data.paths || [];
 
-            if (paths.length === 0) {
-                overlay.classList.remove('d-none');
-                overlay.style.display = 'flex';
-                overlay.style.opacity = '1';
-                overlay.innerHTML =
-                    '<div class="text-center text-white">' +
-                    '<div class="mb-4">' +
-                    '<i class="fas fa-exclamation-triangle" style="font-size: 4rem; color: #dc3545;"></i>' +
-                    '</div>' +
-                    '<h2 class="mb-3">Aucune clé USB détectée</h2>' +
-                    '<button class="btn btn-light" onclick="closeOverlay()">Fermer</button>' +
-                    '</div>';
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = originalContent;
-                return;
-            }
-
-            if (paths.length > 1) {
-                const list = document.getElementById('usbOptions');
-                list.innerHTML = '';
-                paths.forEach(p => {
-                    const btn = document.createElement('button');
-                    btn.className = 'btn btn-primary w-100 mb-2';
-                    btn.textContent = p;
-                    btn.onclick = () => {
-                        const modal = bootstrap.Modal.getInstance(document.getElementById('usbSelectModal'));
-                        modal.hide();
-                        doSave(p, mode, saveBtn, originalContent, overlay);
-                    };
-                    list.appendChild(btn);
-                });
-                const modal = new bootstrap.Modal(document.getElementById('usbSelectModal'));
-                modal.show();
-                saveBtn.disabled = false;
-                saveBtn.innerHTML = originalContent;
-                return;
-            }
-
-            path = paths[0];
+        if (paths.length === 0) {
+            overlay.classList.remove('d-none');
+            overlay.style.display = 'flex';
+            overlay.style.opacity = '1';
+            overlay.innerHTML =
+                '<div class="text-center text-white">' +
+                '<div class="mb-4">' +
+                '<i class="fas fa-exclamation-triangle" style="font-size: 4rem; color: #dc3545;"></i>' +
+                '</div>' +
+                '<h2 class="mb-3">Aucune clé USB détectée</h2>' +
+                '<button class="btn btn-light" onclick="closeOverlay()">Fermer</button>' +
+                '</div>';
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalContent;
+            return;
         }
 
-        await doSave(path, mode, saveBtn, originalContent, overlay);
+        if (paths.length > 1) {
+            const list = document.getElementById('usbOptions');
+            list.innerHTML = '';
+            paths.forEach(p => {
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-primary w-100 mb-2';
+                btn.textContent = p;
+                btn.onclick = () => {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('usbSelectModal'));
+                    modal.hide();
+                    doSave(p, saveBtn, originalContent, overlay);
+                };
+                list.appendChild(btn);
+            });
+            const modal = new bootstrap.Modal(document.getElementById('usbSelectModal'));
+            modal.show();
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalContent;
+            return;
+        }
+
+        await doSave(paths[0], saveBtn, originalContent, overlay);
 
     } catch (error) {
         console.error('Erreur lors de la sauvegarde:', error);
-                overlay.classList.remove('d-none');
-                overlay.style.display = 'flex';
-                overlay.style.opacity = '1';
+        overlay.classList.remove('d-none');
+        overlay.style.display = 'flex';
+        overlay.style.opacity = '1';
         overlay.innerHTML =
             '<div class="text-center text-white">' +
             '<div class="mb-4">' +
@@ -297,7 +265,7 @@ async function saveWithMode(mode) {
     }
 }
 
-async function doSave(path, mode, saveBtn, originalContent, overlay) {
+async function doSave(path, saveBtn, originalContent, overlay) {
     overlay.classList.remove('d-none');
     overlay.style.display = 'flex';
     overlay.style.opacity = '1';
@@ -308,7 +276,7 @@ async function doSave(path, mode, saveBtn, originalContent, overlay) {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ usb_path: path, mode: mode })
+            body: JSON.stringify({ usb_path: path })
         });
 
         const result = await response.json();
@@ -333,7 +301,6 @@ async function doSave(path, mode, saveBtn, originalContent, overlay) {
 
     } catch (error) {
         console.error('Erreur lors de la sauvegarde:', error);
-
         overlay.innerHTML =
             '<div class="text-center text-white">' +
             '<div class="mb-4">' +
@@ -343,7 +310,6 @@ async function doSave(path, mode, saveBtn, originalContent, overlay) {
             '<p class="mb-3">' + error.message + '</p>' +
             '<button class="btn btn-light" onclick="closeOverlay()">Fermer</button>' +
             '</div>';
-
         saveBtn.disabled = false;
         saveBtn.innerHTML = originalContent;
     }
@@ -359,16 +325,14 @@ function closeOverlay() {
 }
 
 function deletePhoto() {
-    // Ouvrir la modale de confirmation
     const modal = new bootstrap.Modal(document.getElementById('deletePhotoModal'));
     modal.show();
 }
 
 async function confirmDeletePhoto() {
-    // Fermer la modale
     const modal = bootstrap.Modal.getInstance(document.getElementById('deletePhotoModal'));
     modal.hide();
-    
+
     try {
         const response = await fetch('/delete_current', {
             method: 'POST',
@@ -376,16 +340,15 @@ async function confirmDeletePhoto() {
                 'Content-Type': 'application/json',
             }
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
-            // Rediriger vers l'accueil
             window.location.href = '/';
         } else {
             throw new Error(result.error || 'Erreur de suppression');
         }
-        
+
     } catch (error) {
         console.error('Erreur lors de la suppression:', error);
         alert('Erreur lors de la suppression: ' + error.message);
@@ -396,13 +359,12 @@ async function applyEffect() {
     const effectBtn = event.target;
     const originalContent = effectBtn.innerHTML;
     const overlay = document.getElementById('effectOverlay');
-    
-    // Désactiver le bouton et afficher l'overlay
+
     effectBtn.disabled = true;
     effectBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Traitement...';
     overlay.classList.remove('d-none');
     overlay.style.display = 'flex';
-    
+
     try {
         const response = await fetch('/apply_effect', {
             method: 'POST',
@@ -410,12 +372,11 @@ async function applyEffect() {
                 'Content-Type': 'application/json',
             }
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
-            // Succès de l'effet - modifier le contenu de l'overlay
-            overlay.innerHTML = 
+            overlay.innerHTML =
                 '<div class="text-center text-white">' +
                 '<div class="mb-4">' +
                 '<i class="fas fa-check-circle" style="font-size: 4rem; color: #28a745;"></i>' +
@@ -423,21 +384,19 @@ async function applyEffect() {
                 '<h2 class="mb-3">Effet appliqué avec succès !</h2>' +
                 '<p class="mb-0">Rechargement de la page...</p>' +
                 '</div>';
-            
-            // Recharger la page après 2 secondes pour afficher la nouvelle image
+
             setTimeout(() => {
                 window.location.reload();
             }, 2000);
-            
+
         } else {
             throw new Error(result.error || 'Erreur lors de l\'application de l\'effet');
         }
-        
+
     } catch (error) {
         console.error('Erreur lors de l\'application de l\'effet:', error);
-        
-        // Afficher l'erreur dans l'overlay
-        overlay.innerHTML = 
+
+        overlay.innerHTML =
             '<div class="text-center text-white">' +
             '<div class="mb-4">' +
             '<i class="fas fa-exclamation-triangle" style="font-size: 4rem; color: #dc3545;"></i>' +
@@ -446,8 +405,7 @@ async function applyEffect() {
             '<p class="mb-3">' + error.message + '</p>' +
             '<button class="btn btn-light" onclick="closeEffectOverlay()">Fermer</button>' +
             '</div>';
-        
-        // Réactiver le bouton
+
         effectBtn.disabled = false;
         effectBtn.innerHTML = originalContent;
     }
@@ -458,7 +416,5 @@ function closeEffectOverlay() {
     overlay.classList.add('d-none');
     overlay.style.display = 'none';
 }
-
-
 </script>
 {% endblock %}
