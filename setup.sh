@@ -175,11 +175,15 @@ confirm() {
 
 # Afficher un résumé des logs si nécessaire
 show_log_summary() {
-  [[ -f "$LOG_FILE" ]] || return
+  [[ -f "$LOG_FILE" ]] || return 0
   local errors=$(grep -i "error\|failed\|échec" "$LOG_FILE" 2>/dev/null | wc -l)
   if (( errors > 0 )); then
     warn "$errors erreur(s) détectée(s) dans les logs"
     echo "Voir les détails: cat $LOG_FILE"
+    return 1
+  else
+    ok "Aucune erreur détectée dans les logs"
+    return 0
   fi
 }
 
@@ -267,11 +271,6 @@ configure_email() {
   read -rp "Destinataire des emails: " email_recipient
   read -rp "Nom d'utilisateur SMTP: " smtp_username
   read -srp "Mot de passe SMTP: " smtp_password; echo
-  if confirm "Utiliser TLS ? (o/N)" "N"; then
-    smtp_use_tls="True"
-  else
-    smtp_use_tls="False"
-  fi
 
   python3 - <<PY
 import json, os
@@ -289,13 +288,12 @@ config.update({
     "smtp_server": "${smtp_server}",
     "smtp_port": int("${smtp_port}" or 25),
     "smtp_username": "${smtp_username}",
-    "smtp_password": "${smtp_password}",
-    "smtp_use_tls": ${smtp_use_tls}
-})
-with open(cfg_path, 'w', encoding='utf-8') as f:
-    json.dump(config, f, indent=2, ensure_ascii=False)
+    "smtp_password": "${smtp_password}"
+  })
+    with open(cfg_path, 'w', encoding='utf-8') as f:
+        json.dump(config, f, indent=2, ensure_ascii=False)
 PY
-  ok "Paramètres SMTP enregistrés"
+  ok "Paramètres SMTP enregistrés (TLS automatique)"
 }
 
 setup_python_env() {
@@ -435,7 +433,12 @@ main() {
   setup_systemd
   
   echo
-  show_log_summary
+  if show_log_summary; then
+    ok "Configuration terminée sans erreur"
+  else
+    warn "Des anomalies ont été détectées lors de l'installation."
+    confirm "Continuer malgré tout? (o/N)" || exit 1
+  fi
   header "✨ INSTALLATION TERMINÉE ✨"
   warn "Redémarrage recommandé pour activer tous les services"
   confirm "Redémarrer maintenant? (o/N)" && reboot
