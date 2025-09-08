@@ -22,6 +22,7 @@ Cette application transforme votre Raspberry Pi en un photobooth professionnel a
 - **Bot Telegram** pour envoi automatique des photos sur un groupe/canal
 - **Impression thermique** avec texte personnalisable
 - **Interface d'administration** complète
+- **Sauvegarde sur clé USB et envoi automatique par email**
 
 ## 🔧️ Matériel requis
 
@@ -74,7 +75,14 @@ Un script `setup.sh` est fourni pour automatiser l'ensemble du processus sur un 
     - Installer les dépendances système (`libcamera-apps`, `python3-opencv`).
     - Créer un environnement virtuel `venv`.
     - Installer les dépendances Python de `requirements.txt` dans cet environnement.
-    - Creer un mode kiosk automatique au demarrage du systeme.
+    - Créer un mode kiosk automatique au démarrage du système.
+    - Configurer l'envoi automatique d'emails et la sauvegarde sur clé USB.
+
+3. **Désinstallation (optionnel)** :
+    ```bash
+    sudo ./uninstall.sh
+    ```
+    Supprime le service, l'autostart et les fichiers installés.
 
 #### Méthode 2 : Installation manuelle
 
@@ -117,6 +125,32 @@ python3 app.py
 
 3. **Administration :**
    - Accéder à `/admin` pour configurer l'application
+
+## Sauvegarde USB & Email
+
+Lors de l'appui sur **Sauvegarder**, l'utilisateur peut choisir :
+
+1. **Email** : envoie la photo à l'adresse configurée.
+2. **Clé USB** : copie la photo sur la clé détectée.
+3. **Les deux** : effectue l'envoi par email et la copie USB.
+
+La clé USB est automatiquement démontée après la copie pour réduire la consommation d'énergie.
+
+## Configuration SMTP
+
+Les paramètres SMTP sont stockés dans `config.json` et peuvent être configurés via `setup.sh` ou manuellement :
+
+```json
+"email_sender": "photobooth@example.com",
+"email_recipient": "destinataire@example.com",
+"smtp_server": "smtp.example.com",
+"smtp_port": 587,
+"smtp_username": "utilisateur",
+"smtp_password": "motdepasse",
+"smtp_use_tls": true
+```
+
+Assurez-vous que le serveur SMTP est accessible et que les identifiants sont valides.
 
 ## Configuration des caméras
 
