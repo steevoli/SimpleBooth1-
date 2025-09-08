@@ -128,30 +128,14 @@ python3 app.py
 
 ## Sauvegarde USB & Email
 
-Lors de l'appui sur **Sauvegarder**, l'utilisateur peut choisir :
+Lors de l'appui sur **Sauvegarder**, la photo est :
 
-1. **Email** : envoie la photo à l'adresse configurée.
-2. **Clé USB** : copie la photo sur la clé détectée.
-3. **Les deux** : effectue l'envoi par email et la copie USB.
+1. **Copiée sur la clé USB** détectée. En cas de plusieurs clés, une liste permet de choisir celle à utiliser.
+2. **Envoyée automatiquement par email** en utilisant la configuration SMTP renseignée lors de l'installation (`setup.sh`). L'adresse d'expédition est également l'adresse de réception.
 
 La clé USB est automatiquement démontée après la copie pour réduire la consommation d'énergie.
-
-## Configuration SMTP
-
-Les paramètres SMTP sont stockés dans `config.json` et peuvent être configurés via `setup.sh` ou manuellement :
-
-```json
-"email_sender": "photobooth@example.com",
-"email_recipient": "destinataire@example.com",
-"smtp_server": "smtp.example.com",
-"smtp_port": 587,
-"smtp_username": "utilisateur",
-"smtp_password": "motdepasse"
-```
-
-Le chiffrement TLS est détecté automatiquement lorsque le serveur le supporte, aucune configuration n'est nécessaire.
-
-Assurez-vous que le serveur SMTP est accessible et que les identifiants sont valides.
+Avant le démontage, l'application force l'écriture des données avec `os.sync()` afin d'éviter les erreurs de temporisation, notamment sur Raspberry Pi 5.
+Si l'outil `uhubctl` est présent, l'alimentation des ports USB est coupée après l'opération pour économiser la batterie ; sinon l'étape est ignorée.
 
 ## Configuration des caméras
 
