@@ -7,7 +7,6 @@ import time
 import subprocess
 import threading
 import asyncio
-import requests
 import logging
 import signal
 import atexit
@@ -55,6 +54,9 @@ def find_usb_mounts():
 
 def manage_usb_power(enable: bool):
     """Active/désactive l'alimentation des ports USB si possible."""
+    if shutil.which('uhubctl') is None:
+        logger.info("[USB] uhubctl absent, gestion d'énergie ignorée")
+        return
     action = 'on' if enable else 'off'
     try:
         subprocess.run(
@@ -259,35 +261,37 @@ def save_photo():
             return jsonify({'success': False, 'error': 'Photo introuvable'})
 
         data = request.get_json() or {}
-        mode = data.get('mode', 'both')
         usb_path = data.get('usb_path')
 
-        # Détection automatique de la clé USB
-        if mode in ('usb', 'both'):
-            if not usb_path or not os.path.exists(usb_path):
-                mounts = find_usb_mounts()
-                usb_path = mounts[0] if mounts else None
-            if not usb_path or not os.path.exists(usb_path):
-                return jsonify({'success': False, 'error': 'Aucune clé USB détectée. Vérifiez la connexion.'})
-            config['usb_mount_path'] = usb_path
+        if not usb_path or not os.path.exists(usb_path):
+            mounts = find_usb_mounts()
+            usb_path = mounts[0] if mounts else None
+        if not usb_path or not os.path.exists(usb_path):
+            return jsonify({'success': False, 'error': 'Aucune clé USB détectée. Vérifiez la connexion.'})
 
-            manage_usb_power(True)
-            try:
-                shutil.copy(photo_path, os.path.join(usb_path, os.path.basename(photo_path)))
-                subprocess.run(['sync'], timeout=5)
-                subprocess.run(['umount', usb_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
-            except Exception as e:
-                manage_usb_power(False)
-                return jsonify({'success': False, 'error': f'Erreur sauvegarde USB: {str(e)}'})
+        config['usb_mount_path'] = usb_path
+
+        manage_usb_power(True)
+        try:
+            shutil.copy(photo_path, os.path.join(usb_path, os.path.basename(photo_path)))
+            # Utiliser os.sync pour s'assurer que les données sont écrites
+            os.sync()
+            subprocess.run(
+                ['umount', usb_path],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=15,
+            )
+        except Exception as e:
             manage_usb_power(False)
+            return jsonify({'success': False, 'error': f'Erreur sauvegarde USB: {str(e)}'})
+        manage_usb_power(False)
 
-        # Envoi email si demandé
-        if mode in ('email', 'both'):
-            success, error_msg = send_email(photo_path, config)
-            if not success:
-                return jsonify({'success': False, 'error': f'Erreur envoi email: {error_msg}'})
+        success, error_msg = send_email(photo_path)
+        if not success:
+            return jsonify({'success': False, 'error': f'Erreur envoi email: {error_msg}'})
 
-        return jsonify({'success': True, 'message': 'Photo sauvegardée avec succès'})
+        return jsonify({'success': True, 'message': 'Photo sauvegardée et envoyée avec succès'})
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
