@@ -259,6 +259,45 @@ configure_serial() {
   warn "Redémarrage requis pour activer le port série"
 }
 
+configure_email() {
+  step "Configuration de l'envoi d'emails"
+  read -rp "Serveur SMTP (ex: smtp.gmail.com): " smtp_server
+  read -rp "Port SMTP (ex: 587): " smtp_port
+  read -rp "Email expéditeur: " email_sender
+  read -rp "Destinataire des emails: " email_recipient
+  read -rp "Nom d'utilisateur SMTP: " smtp_username
+  read -srp "Mot de passe SMTP: " smtp_password; echo
+  if confirm "Utiliser TLS ? (o/N)" "N"; then
+    smtp_use_tls=true
+  else
+    smtp_use_tls=false
+  fi
+
+  python3 - <<PY
+import json, os
+cfg_path = os.path.join("$APP_DIR", "config.json")
+config = {}
+if os.path.exists(cfg_path):
+    try:
+        with open(cfg_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+    except Exception:
+        config = {}
+config.update({
+    "email_sender": "${email_sender}",
+    "email_recipient": "${email_recipient}",
+    "smtp_server": "${smtp_server}",
+    "smtp_port": int("${smtp_port}" or 25),
+    "smtp_username": "${smtp_username}",
+    "smtp_password": "${smtp_password}",
+    "smtp_use_tls": ${smtp_use_tls}
+})
+with open(cfg_path, 'w', encoding='utf-8') as f:
+    json.dump(config, f, indent=2, ensure_ascii=False)
+PY
+  ok "Paramètres SMTP enregistrés"
+}
+
 setup_python_env() {
   step "Configuration environnement Python"
   command -v python3 >/dev/null || error "Python 3 non installé"
@@ -391,6 +430,7 @@ main() {
   fi
   
   setup_python_env
+  configure_email
   setup_kiosk
   setup_systemd
   

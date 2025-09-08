@@ -22,6 +22,13 @@
             padding: 8px 16px;
         }
     }
+    .flash-overlay {
+        opacity: 0;
+        transition: opacity 0.5s ease;
+    }
+    .flash-overlay.show {
+        opacity: 1;
+    }
     </style>
     <!-- Conteneur vidéo avec marges élégantes -->
     <div class="video-container position-relative d-flex align-items-center justify-content-center" id="videoContainer" style="height: calc(100vh - 2rem); width: calc(100vw - 2rem);">
@@ -93,6 +100,19 @@ document.addEventListener('DOMContentLoaded', function() {
     initCamera();
 });
 
+const funMessages = [
+    "Que la Force soit avec toi !",
+    "Vers l'infini et au-delà !",
+    "Je suis ton père.",
+    "C'est pas faux.",
+    "Un grand pouvoir implique de grandes responsabilités.",
+    "Hakuna Matata !",
+    "L'hiver arrive.",
+    "Hasta la vista, baby !",
+    "Je suis Groot.",
+    "Pourquoi si sérieux ?"
+];
+
 function initCamera() {
     try {
         console.log('Initialisation du flux vidéo caméra...');
@@ -155,16 +175,20 @@ function capturePhoto() {
         
         if (timeLeft < 0) {
             clearInterval(countdownInterval);
-            countdown.textContent = 'CHEESE!';
-            
+            const msg = funMessages[Math.floor(Math.random() * funMessages.length)];
+            countdown.textContent = msg;
+
             // Déclencher le flash blanc
             setTimeout(() => {
                 countdown.classList.add('d-none');
                 const flashOverlay = document.getElementById('flashOverlay');
+                flashOverlay.querySelector('div').textContent = msg;
                 flashOverlay.classList.remove('d-none');
-                
+                flashOverlay.classList.add('show');
+
                 // Masquer le flash après un court délai et prendre la photo
                 setTimeout(() => {
+                    flashOverlay.classList.remove('show');
                     flashOverlay.classList.add('d-none');
                     takePicture();
                 }, 300);

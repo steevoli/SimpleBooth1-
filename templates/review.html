@@ -44,6 +44,12 @@
         justify-content: center;
         line-height: 1.2;
         padding: 0.5rem;
+        border-radius: 15px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .btn-review:hover {
+        transform: scale(1.05);
+        box-shadow: 0 6px 15px rgba(0,0,0,0.3);
     }
     .btn-review i {
         font-size: 1.5rem;
@@ -170,6 +176,19 @@
         </div>
     </div>
 </div>
+
+<!-- Modale sélection clé USB -->
+<div class="modal fade" id="usbSelectModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Choisir la clé USB</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="usbOptions"></div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -179,9 +198,73 @@ async function savePhoto() {
     const originalContent = saveBtn.innerHTML;
     const overlay = document.getElementById('saveOverlay');
 
-    // Désactiver le bouton et afficher l'overlay
+    // Désactiver le bouton
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Sauvegarde...';
+
+    try {
+        const resp = await fetch('/usb_paths');
+        const data = await resp.json();
+        const paths = data.paths || [];
+
+        if (paths.length === 0) {
+            overlay.classList.remove('d-none');
+            overlay.style.display = 'flex';
+            overlay.innerHTML =
+                '<div class="text-center text-white">' +
+                '<div class="mb-4">' +
+                '<i class="fas fa-exclamation-triangle" style="font-size: 4rem; color: #dc3545;"></i>' +
+                '</div>' +
+                '<h2 class="mb-3">Aucune clé USB détectée</h2>' +
+                '<button class="btn btn-light" onclick="closeOverlay()">Fermer</button>' +
+                '</div>';
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalContent;
+            return;
+        }
+
+        if (paths.length > 1) {
+            const list = document.getElementById('usbOptions');
+            list.innerHTML = '';
+            paths.forEach(p => {
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-primary w-100 mb-2';
+                btn.textContent = p;
+                btn.onclick = () => {
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('usbSelectModal'));
+                    modal.hide();
+                    doSave(p, saveBtn, originalContent, overlay);
+                };
+                list.appendChild(btn);
+            });
+            const modal = new bootstrap.Modal(document.getElementById('usbSelectModal'));
+            modal.show();
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalContent;
+            return;
+        }
+
+        await doSave(paths[0], saveBtn, originalContent, overlay);
+
+    } catch (error) {
+        console.error('Erreur lors de la détection USB:', error);
+        overlay.classList.remove('d-none');
+        overlay.style.display = 'flex';
+        overlay.innerHTML =
+            '<div class="text-center text-white">' +
+            '<div class="mb-4">' +
+            '<i class="fas fa-exclamation-triangle" style="font-size: 4rem; color: #dc3545;"></i>' +
+            '</div>' +
+            '<h2 class="mb-3">Erreur USB</h2>' +
+            '<p class="mb-3">' + error.message + '</p>' +
+            '<button class="btn btn-light" onclick="closeOverlay()">Fermer</button>' +
+            '</div>';
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalContent;
+    }
+}
+
+async function doSave(path, saveBtn, originalContent, overlay) {
     overlay.classList.remove('d-none');
     overlay.style.display = 'flex';
 
@@ -190,7 +273,8 @@ async function savePhoto() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-            }
+            },
+            body: JSON.stringify({ usb_path: path })
         });
 
         const result = await response.json();
