@@ -13,6 +13,7 @@ import signal
 import atexit
 import base64
 import sys
+import shutil
 from datetime import datetime
 from runware import Runware, IImageInference
 from config_utils import (
@@ -24,6 +25,7 @@ from config_utils import (
 )
 from camera_utils import UsbCamera, detect_cameras
 from telegram_utils import send_to_telegram
+from email_utils import send_email
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'photobooth_secret_key_2024')
@@ -195,19 +197,15 @@ def review_photo():
         return redirect(url_for('index'))
     return render_template('review.html', photo=current_photo, config=config)
 
-@app.route('/print_photo', methods=['POST'])
-def print_photo():
-    """Imprimer la photo actuelle"""
+@app.route('/save_photo', methods=['POST'])
+def save_photo():
+    """Sauvegarder la photo actuelle sur USB et l'envoyer par email"""
     global current_photo
-    
+
     if not current_photo:
-        return jsonify({'success': False, 'error': 'Aucune photo à imprimer'})
-    
+        return jsonify({'success': False, 'error': 'Aucune photo à sauvegarder'})
+
     try:
-        # Vérifier si l'imprimante est activée
-        if not config.get('printer_enabled', True):
-            return jsonify({'success': False, 'error': 'Imprimante désactivée dans la configuration'})
-        
         # Chercher la photo dans le bon dossier
         photo_path = None
         if os.path.exists(os.path.join(PHOTOS_FOLDER, current_photo)):
@@ -216,45 +214,23 @@ def print_photo():
             photo_path = os.path.join(EFFECT_FOLDER, current_photo)
         else:
             return jsonify({'success': False, 'error': 'Photo introuvable'})
-        
-        # Vérifier l'existence du script d'impression
-        script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ScriptPythonPOS.py')
-        if not os.path.exists(script_path):
-            return jsonify({'success': False, 'error': 'Script d\'impression introuvable (ScriptPythonPOS.py)'})
-        
-        # Construire la commande d'impression avec les nouveaux paramètres
-        cmd = ['python3', 'ScriptPythonPOS.py', '--image', photo_path]
-        
-        # Ajouter les paramètres de port et baudrate
-        printer_port = config.get('printer_port', '/dev/ttyAMA0')
-        printer_baudrate = config.get('printer_baudrate', 9600)
-        cmd.extend(['--port', printer_port, '--baudrate', str(printer_baudrate)])
-        
-        # Ajouter le texte de pied de page si configuré
-        footer_text = config.get('footer_text', '')
-        if footer_text:
-            cmd.extend(['--text', footer_text])
-        
-        # Ajouter l'option haute résolution selon la configuration
-        print_resolution = config.get('print_resolution', 384)
-        if print_resolution > 384:
-            cmd.append('--hd')
-        
-        # Exécuter l'impression
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=os.path.dirname(os.path.abspath(__file__)))
-        
-        if result.returncode == 0:
-            return jsonify({'success': True, 'message': 'Photo imprimée avec succès!'})
-        elif result.returncode == 2:
-            # Code d'erreur spécifique pour manque de papier
-            return jsonify({'success': False, 'error': 'Plus de papier dans l\'imprimante', 'error_type': 'no_paper'})
-        else:
-            error_msg = result.stderr.strip() if result.stderr else 'Erreur inconnue'
-            if 'ModuleNotFoundError' in error_msg and 'escpos' in error_msg:
-                return jsonify({'success': False, 'error': 'Module escpos manquant. Installez-le avec: pip install python-escpos'})
-            else:
-                return jsonify({'success': False, 'error': f'Erreur d\'impression: {error_msg}'})
-            
+
+        # Copier vers la clé USB
+        usb_path = config.get('usb_mount_path', '/media/usb')
+        if not os.path.exists(usb_path):
+            return jsonify({'success': False, 'error': 'Clé USB non détectée'})
+        try:
+            shutil.copy(photo_path, os.path.join(usb_path, os.path.basename(photo_path)))
+        except Exception as e:
+            return jsonify({'success': False, 'error': f'Erreur sauvegarde USB: {str(e)}'})
+
+        # Envoyer par email
+        success, error_msg = send_email(photo_path, config)
+        if not success:
+            return jsonify({'success': False, 'error': f'Erreur envoi email: {error_msg}'})
+
+        return jsonify({'success': True, 'message': 'Photo sauvegardée et envoyée avec succès!'})
+
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
