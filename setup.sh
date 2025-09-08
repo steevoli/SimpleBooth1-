@@ -289,9 +289,9 @@ config.update({
     "smtp_port": int("${smtp_port}" or 25),
     "smtp_username": "${smtp_username}",
     "smtp_password": "${smtp_password}"
-  })
-    with open(cfg_path, 'w', encoding='utf-8') as f:
-        json.dump(config, f, indent=2, ensure_ascii=False)
+})
+with open(cfg_path, 'w', encoding='utf-8') as f:
+    json.dump(config, f, indent=2, ensure_ascii=False)
 PY
   ok "Paramètres SMTP enregistrés (TLS automatique)"
 }
