@@ -55,6 +55,20 @@ def find_usb_mounts():
                     mounts.append(mount_point)
     except Exception as e:  # pragma: no cover - dépend du système
         logger.info(f"[USB] Erreur de détection: {e}")
+    if not mounts:
+        try:
+            with open('/proc/mounts') as f:
+                for line in f:
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        mount_point = parts[1]
+                        if (
+                            mount_point.startswith('/media/')
+                            or mount_point.startswith('/run/media/')
+                        ) and mount_point not in mounts:
+                            mounts.append(mount_point)
+        except Exception as e:
+            logger.info(f"[USB] Fallback detection error: {e}")
     return mounts
 
 def check_printer_status():
