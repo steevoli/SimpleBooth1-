@@ -190,12 +190,12 @@ function capturePhoto() {
                 flashOverlay.classList.remove('d-none');
                 flashOverlay.classList.add('show');
 
-                // Masquer le flash après un court délai et prendre la photo
+                // Masquer le flash après un délai de 2 secondes et prendre la photo
                 setTimeout(() => {
                     flashOverlay.classList.remove('show');
                     flashOverlay.classList.add('d-none');
                     takePicture();
-                }, 300);
+                }, 2000);
             }, 200);
         }
     }, 1000);
