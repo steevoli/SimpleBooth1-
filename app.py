@@ -672,6 +672,45 @@ def reprint_photo(filename):
     
     return redirect(url_for('admin'))
 
+
+@app.route('/usb_photos')
+def usb_photos():
+    """Afficher les photos présentes sur la clé USB"""
+    usb_path = config.get('usb_mount_path')
+    if not usb_path or not os.path.exists(usb_path):
+        mounts = find_usb_mounts()
+        usb_path = mounts[0] if mounts else None
+
+    photos = []
+    if usb_path and os.path.exists(usb_path):
+        for filename in sorted(os.listdir(usb_path)):
+            if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
+                photos.append(filename)
+
+    return render_template('usb_photos.html', photos=photos, usb_path=usb_path)
+
+
+@app.route('/usb_photos/<path:filename>')
+def serve_usb_photo(filename):
+    """Servir une photo depuis la clé USB"""
+    usb_path = config.get('usb_mount_path')
+    if not usb_path or not os.path.exists(os.path.join(usb_path, filename)):
+        abort(404)
+    return send_from_directory(usb_path, filename)
+
+
+@app.route('/usb_photos/delete/<path:filename>', methods=['POST'])
+def delete_usb_photo(filename):
+    """Supprimer une photo spécifique de la clé USB"""
+    usb_path = config.get('usb_mount_path')
+    file_path = os.path.join(usb_path, filename) if usb_path else None
+    if file_path and os.path.exists(file_path):
+        os.remove(file_path)
+        flash('Photo supprimée avec succès', 'success')
+    else:
+        flash('Photo introuvable', 'error')
+    return redirect(url_for('usb_photos'))
+
 @app.route('/api/slideshow')
 def get_slideshow_data():
     """API pour récupérer les données du diaporama"""
