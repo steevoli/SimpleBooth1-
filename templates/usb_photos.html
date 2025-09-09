@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Photos USB{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="mb-3">
+        <a href="{{ url_for('admin') }}" class="btn btn-primary">
+            <i class="fas fa-arrow-left me-2"></i>
+            Retour à l'administration
+        </a>
+    </div>
+    {% if not usb_path %}
+        <div class="alert alert-warning">Aucune clé USB détectée.</div>
+    {% elif photos %}
+        <div class="row">
+            {% for photo in photos %}
+            <div class="col-md-3 col-sm-4 col-6 mb-4">
+                <div class="card h-100">
+                    <img src="{{ url_for('serve_usb_photo', filename=photo) }}" class="card-img-top" alt="{{ photo }}">
+                    <div class="card-body p-2 text-center">
+                        <form method="POST" action="{{ url_for('delete_usb_photo', filename=photo) }}" onsubmit="return confirm('Supprimer cette photo ?');">
+                            <button type="submit" class="btn btn-sm btn-danger">
+                                <i class="fas fa-trash me-1"></i>Supprimer
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>Aucune photo trouvée sur la clé USB.</p>
+    {% endif %}
+</div>
+{% endblock %}

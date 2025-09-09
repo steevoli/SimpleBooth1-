@@ -26,10 +26,14 @@
         </div>
         
         <!-- Navigation -->
-        <div class="mb-4">
+        <div class="mb-4 d-flex flex-wrap gap-2">
             <a href="{{ url_for('index') }}" class="btn btn-primary">
                 <i class="fas fa-arrow-left me-2"></i>
                 Retour au Photobooth
+            </a>
+            <a href="{{ url_for('usb_photos') }}" class="btn btn-secondary">
+                <i class="fas fa-folder-open me-2"></i>
+                Photos USB
             </a>
         </div>
         
