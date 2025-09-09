@@ -198,7 +198,7 @@ La configuration est sauvegardée dans `config.json` :
 ### Diaporama
 - `slideshow_enabled` : Activer/désactiver le diaporama automatique
 - `slideshow_delay` : Délai d'inactivité avant affichage du diaporama (10-300 secondes)
-- `slideshow_source` : Source des photos pour le diaporama ('photos' ou 'effet')
+- `slideshow_source` : Source des photos pour le diaporama ('photos', 'effet' ou 'usb')
 
 ### Effets IA
 - `effect_enabled` : Activer/désactiver les effets IA

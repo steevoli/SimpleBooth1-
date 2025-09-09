@@ -717,7 +717,13 @@ def get_slideshow_data():
     photos = []
     
     # Déterminer le dossier source selon la configuration
-    source_folder = EFFECT_FOLDER if config.get('slideshow_source', 'photos') == 'effet' else PHOTOS_FOLDER
+    source_choice = config.get('slideshow_source', 'usb')
+    if source_choice == 'effet':
+        source_folder = EFFECT_FOLDER
+    elif source_choice == 'usb':
+        source_folder = config.get('usb_mount_path', '/media/usb')
+    else:
+        source_folder = PHOTOS_FOLDER
     
     if os.path.exists(source_folder):
         for filename in os.listdir(source_folder):
@@ -729,7 +735,7 @@ def get_slideshow_data():
     return jsonify({
         'enabled': config.get('slideshow_enabled', False),
         'delay': config.get('slideshow_delay', 60),
-        'source': config.get('slideshow_source', 'photos'),
+        'source': source_choice,
         'photos': photos
     })
 
