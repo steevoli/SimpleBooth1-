@@ -107,12 +107,12 @@ const funMessages = [
 
 function fitTextToContainer(el) {
     const container = document.getElementById('videoContainer');
-    let size = Math.min(container.clientWidth, container.clientHeight) * 0.8;
+    let size = Math.min(container.clientWidth, container.clientHeight) * 0.95;
     el.style.fontSize = size + 'px';
     el.style.whiteSpace = 'normal';
     el.style.width = '90%';
     el.style.textAlign = 'center';
-    while ((el.scrollWidth > container.clientWidth * 0.9 || el.scrollHeight > container.clientHeight * 0.8) && size > 10) {
+    while ((el.scrollWidth > container.clientWidth * 0.95 || el.scrollHeight > container.clientHeight * 0.9) && size > 10) {
         size -= 2;
         el.style.fontSize = size + 'px';
     }
