@@ -350,8 +350,9 @@ function showCurrentSlide() {
     
     const image = document.getElementById('slideshowImage');
     const counter = document.getElementById('slideshowCounter');
-    
-    image.src = `/photos/${slideshowPhotos[slideshowIndex]}`;
+
+    const basePath = slideshowConfig && slideshowConfig.source === 'usb' ? '/usb_photos' : '/photos';
+    image.src = `${basePath}/${slideshowPhotos[slideshowIndex]}`;
     counter.textContent = `Photo ${slideshowIndex + 1} sur ${slideshowPhotos.length}`;
     
 

@@ -13,7 +13,7 @@ DEFAULT_CONFIG = {
     'high_density': False,
     'slideshow_enabled': False,
     'slideshow_delay': 60,
-    'slideshow_source': 'photos',
+    'slideshow_source': 'usb',
     'effect_enabled': False,
     'effect_prompt': 'Transform this photo into a beautiful ghibli style',
     'effect_steps': 5,
