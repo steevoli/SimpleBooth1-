@@ -22,13 +22,6 @@
             padding: 8px 16px;
         }
     }
-    .flash-overlay {
-        opacity: 0;
-        transition: opacity 0.5s ease;
-    }
-    .flash-overlay.show {
-        opacity: 1;
-    }
     </style>
     <!-- Conteneur vidéo avec marges élégantes -->
     <div class="video-container position-relative d-flex align-items-center justify-content-center" id="videoContainer" style="height: calc(100vh - 2rem); width: calc(100vw - 2rem);">
@@ -39,12 +32,6 @@
         
         <!-- Countdown overlay -->
         <div class="countdown d-none position-absolute top-50 start-50 translate-middle" id="countdown"></div>
-        
-        <!-- Flash blanc pour la prise de photo -->
-        <div class="flash-overlay d-none position-fixed top-0 start-0 w-100 h-100" id="flashOverlay" 
-             style="background-color: white; z-index: 15; display: flex; align-items: center; justify-content: center;">
-            <div style="font-size: 8rem; font-weight: bold; color: black; text-shadow: none;">CHEESE!</div>
-        </div>
         
         <!-- Boutons en overlay -->
         <div class="position-absolute bottom-0 start-50 translate-middle-x mb-4 d-flex gap-3" style="z-index: 5;">
@@ -118,6 +105,19 @@ const funMessages = [
     "Pourquoi si sérieux ?"
 ];
 
+function fitTextToContainer(el) {
+    const container = document.getElementById('videoContainer');
+    let size = Math.min(container.clientWidth, container.clientHeight) * 0.4;
+    el.style.fontSize = size + 'px';
+    el.style.whiteSpace = 'normal';
+    el.style.width = '90%';
+    el.style.textAlign = 'center';
+    while ((el.scrollWidth > container.clientWidth * 0.9 || el.scrollHeight > container.clientHeight * 0.8) && size > 10) {
+        size -= 2;
+        el.style.fontSize = size + 'px';
+    }
+}
+
 function initCamera() {
     try {
         console.log('Initialisation du flux vidéo caméra...');
@@ -173,31 +173,22 @@ function capturePhoto() {
     // Démarrer le compte à rebours
     let timeLeft = parseInt('{{ timer }}');
     countdown.classList.remove('d-none');
-    
+
     const countdownInterval = setInterval(() => {
         countdown.textContent = timeLeft;
+        fitTextToContainer(countdown);
         timeLeft--;
-        
+
         if (timeLeft < 0) {
             clearInterval(countdownInterval);
             const msg = funMessages[Math.floor(Math.random() * funMessages.length)];
             countdown.textContent = msg;
+            fitTextToContainer(countdown);
 
-            // Déclencher le flash blanc
             setTimeout(() => {
                 countdown.classList.add('d-none');
-                const flashOverlay = document.getElementById('flashOverlay');
-                flashOverlay.querySelector('div').textContent = msg;
-                flashOverlay.classList.remove('d-none');
-                flashOverlay.classList.add('show');
-
-                // Masquer le flash après un délai de 2 secondes et prendre la photo
-                setTimeout(() => {
-                    flashOverlay.classList.remove('show');
-                    flashOverlay.classList.add('d-none');
-                    takePicture();
-                }, 2000);
-            }, 200);
+                takePicture();
+            }, 2000);
         }
     }, 1000);
 }
